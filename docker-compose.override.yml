@@ -1,0 +1,14 @@
+# Development overrides (automatically loaded by docker-compose)
+version: '3.8'
+
+services:
+  radio-russell-dev:
+    volumes:
+      - .:/app:cached  # Cached mount for better performance on macOS/Windows
+      - radio-russell-data-dev:/app/data
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - FLASK_RELOAD=1
+    stdin_open: true
+    tty: true

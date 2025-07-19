@@ -57,6 +57,30 @@ A high-quality live streaming radio application featuring lossless audio, real-t
 4. **Open your browser**
    Navigate to `http://localhost:3000`
 
+## Docker Deployment 🐳
+
+Radio Russell includes complete Docker support for both development and production deployments.
+
+### Quick Docker Start
+
+```bash
+# Development with hot reload
+./scripts/deploy.sh dev up
+
+# Production with nginx reverse proxy
+./scripts/deploy.sh prod up
+```
+
+### Docker Features
+- **Multi-stage builds** for optimized image sizes
+- **Development environment** with hot reload and debugging
+- **Production environment** with Gunicorn, nginx, and security hardening
+- **Persistent data volumes** for database storage
+- **Health checks** and monitoring
+- **Security best practices** (non-root user, input validation, rate limiting)
+
+See [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md) for complete Docker deployment guide.
+
 ## API Endpoints
 
 ### Users
