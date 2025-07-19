@@ -1,6 +1,5 @@
 import pytest
 import json
-from app_prod import User, SongRating, db
 
 
 class TestHealthEndpoint:
@@ -158,6 +157,8 @@ class TestDatabaseModels:
     
     def test_user_model(self, app_context):
         """Test User model creation and properties."""
+        User = app_context.User
+        db = app_context.db
         user = User(name='Test User', email='model@test.com')
         db.session.add(user)
         db.session.commit()
@@ -175,6 +176,8 @@ class TestDatabaseModels:
     
     def test_song_rating_model(self, app_context):
         """Test SongRating model creation and properties."""
+        SongRating = app_context.SongRating
+        db = app_context.db
         rating = SongRating(
             song_id='test_song_123',
             user_fingerprint='test_fingerprint',
