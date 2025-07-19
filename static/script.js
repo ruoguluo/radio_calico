@@ -105,6 +105,13 @@ async function fetchMetadata() {
             album: 'Test Album',
             releaseDate: '2023'
         });
+        
+        // Set fallback quality info
+        updateStreamQuality({
+            bitDepth: '16',
+            sampleRate: '44100',
+            format: 'FLAC'
+        });
     }
 }
 
@@ -189,10 +196,18 @@ function updateRecentlyPlayed(tracks) {
 }
 
 function updateStreamQuality(data) {
-    const bitDepth = data.bitDepth || '24';
-    const sampleRate = data.sampleRate || '96000';
-    const qualityText = `Stream quality: ${(sampleRate / 1000).toFixed(0)}kHz FLAC / HLS Lossless`;
-    document.getElementById('streamQuality').textContent = qualityText;
+    // Update source quality from metadata
+    const sourceBitDepth = data.bitDepth || data.bit_depth || '24';
+    const sourceSampleRate = data.sampleRate || data.sample_rate || '96000';
+    const sourceFormat = data.format || 'FLAC';
+    const sourceQualityText = `Source quality: ${sourceBitDepth}-bit ${(sourceSampleRate / 1000).toFixed(1)}kHz ${sourceFormat}`;
+    document.getElementById('sourceQuality').textContent = sourceQualityText;
+    
+    // Update stream quality (this could be different from source if transcoded)
+    const streamSampleRate = data.streamSampleRate || data.stream_sample_rate || sourceSampleRate;
+    const streamFormat = data.streamFormat || data.stream_format || 'FLAC';
+    const streamQualityText = `Stream quality: ${(streamSampleRate / 1000).toFixed(0)}kHz ${streamFormat} / HLS Lossless`;
+    document.getElementById('streamQuality').textContent = streamQualityText;
 }
 
 function startMetadataUpdates() {
