@@ -46,7 +46,7 @@ A high-quality live streaming radio application featuring lossless audio, real-t
 
 2. **Install Python dependencies**
    ```bash
-   pip install flask flask-cors
+   pip install -r requirements.txt
    ```
 
 3. **Run the application**
@@ -83,6 +83,9 @@ A high-quality live streaming radio application featuring lossless audio, real-t
 ```
 radio-calico/
 ├── app.py                      # Flask backend server
+├── test_app.py                 # Comprehensive test suite
+├── run_tests.py                # Test runner script
+├── requirements.txt            # Python dependencies
 ├── index.html                  # Main application interface
 ├── database.db                 # SQLite database
 ├── stream_URL.txt             # Streaming endpoint URL
@@ -149,6 +152,27 @@ Radio Calico follows a distinctive brand identity:
 python app.py
 ```
 The server runs on `http://localhost:3000` with debug mode enabled.
+
+### Running Tests
+The project includes comprehensive tests for all API endpoints and functionality.
+
+```bash
+# Run all tests
+python test_app.py
+
+# Or use the test runner for detailed output
+python run_tests.py
+
+# Run specific test methods
+python -m unittest test_app.RadioCalicoTestCase.test_create_user_success
+```
+
+**Test Coverage:**
+- API endpoint testing (users, ratings)
+- Database operations and constraints
+- User fingerprinting functionality
+- Error handling and validation
+- Static file serving
 
 ### Database Initialization
 The database is automatically initialized when the application starts. Tables are created if they don't exist.
