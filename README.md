@@ -1,8 +1,8 @@
-# Radio Calico 🎵
+# Radio Russell 🎵
 
 A high-quality live streaming radio application featuring lossless audio, real-time metadata, and community-driven song ratings.
 
-![Radio Calico Logo](static/RadioCalicoLogoTM.png)
+![Radio Russell Logo](static/RadioCalicoLogoTM.png)
 
 ## Features
 
@@ -132,7 +132,7 @@ CREATE TABLE song_ratings (
 
 ## Brand Guidelines
 
-Radio Calico follows a distinctive brand identity:
+Radio Russell follows a distinctive brand identity:
 
 ### Colors
 - **Mint**: `#D8F2D5` - Background accents
@@ -218,4 +218,4 @@ For support, please open an issue on GitHub or contact the development team.
 
 ---
 
-**Radio Calico** - *Crystal clear audio, community driven* 🎵
+**Radio Russell** - *Crystal clear audio, community driven* 🎵
