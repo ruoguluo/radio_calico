@@ -35,7 +35,6 @@ A high-quality live streaming radio application featuring lossless audio, real-t
 
 ### Prerequisites
 - Python 3.7+
-- Node.js (for package management)
 
 ### Installation
 
@@ -50,17 +49,12 @@ A high-quality live streaming radio application featuring lossless audio, real-t
    pip install flask flask-cors
    ```
 
-3. **Install Node.js dependencies** (optional)
-   ```bash
-   npm install
-   ```
-
-4. **Run the application**
+3. **Run the application**
    ```bash
    python app.py
    ```
 
-5. **Open your browser**
+4. **Open your browser**
    Navigate to `http://localhost:3000`
 
 ## API Endpoints
@@ -91,7 +85,6 @@ radio-calico/
 ├── app.py                      # Flask backend server
 ├── index.html                  # Main application interface
 ├── database.db                 # SQLite database
-├── package.json               # Node.js dependencies
 ├── stream_URL.txt             # Streaming endpoint URL
 ├── static/                    # Frontend assets
 │   ├── script.js              # JavaScript functionality
