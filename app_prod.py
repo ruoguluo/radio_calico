@@ -1,17 +1,19 @@
 import os
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-import sqlite3
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import text
 import hashlib
 from datetime import datetime
 import logging
+import psycopg2
+from urllib.parse import urlparse
 
 # Configure logging for production
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('/app/data/app.log'),
         logging.StreamHandler()
     ]
 )
@@ -21,38 +23,60 @@ app = Flask(__name__)
 # Configure CORS for production
 CORS(app, origins=os.getenv('ALLOWED_ORIGINS', '*').split(','))
 
-# Use environment variable for database path
-DATABASE = os.getenv('DATABASE_PATH', '/app/data/database.db')
+# Database configuration
+# Use PostgreSQL in production, SQLite in development
+if os.getenv('DATABASE_URL'):
+    # Production: PostgreSQL
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+    USE_POSTGRES = True
+else:
+    # Development: SQLite
+    database_path = os.getenv('DATABASE_PATH', '/app/data/database.db')
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{database_path}'
+    USE_POSTGRES = False
 
-def get_db_connection():
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    return conn
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
+# Database Models
+class User(db.Model):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(100), unique=True, nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)
+
+class SongRating(db.Model):
+    __tablename__ = 'song_ratings'
+    id = db.Column(db.Integer, primary_key=True)
+    song_id = db.Column(db.String(100), nullable=False)
+    user_fingerprint = db.Column(db.String(32), nullable=False)
+    rating = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)
+    
+    __table_args__ = (
+        db.UniqueConstraint('song_id', 'user_fingerprint'),
+        db.CheckConstraint('rating IN (1, -1)')
+    )
 
 def init_db():
     try:
-        conn = get_db_connection()
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                email TEXT UNIQUE NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS song_ratings (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                song_id TEXT NOT NULL,
-                user_fingerprint TEXT NOT NULL,
-                rating INTEGER NOT NULL CHECK(rating IN (1, -1)),
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(song_id, user_fingerprint)
-            )
-        ''')
-        conn.commit()
-        conn.close()
-        logging.info(f"Database initialized at {DATABASE}")
+        with app.app_context():
+            # Test database connection
+            if USE_POSTGRES:
+                # Test PostgreSQL connection
+                result = db.session.execute(text('SELECT 1'))
+                result.fetchone()
+                logging.info("PostgreSQL connection established")
+            else:
+                # For SQLite, ensure directory exists
+                db_path = os.getenv('DATABASE_PATH', '/app/data/database.db')
+                os.makedirs(os.path.dirname(db_path), exist_ok=True)
+                logging.info(f"SQLite database at {db_path}")
+            
+            # Create tables
+            db.create_all()
+            logging.info("Database tables created successfully")
     except Exception as e:
         logging.error(f"Database initialization failed: {e}")
         raise
@@ -72,12 +96,14 @@ def serve_static(filename):
 @app.route('/api/users', methods=['GET'])
 def get_users():
     try:
-        conn = get_db_connection()
-        users = conn.execute('SELECT * FROM users ORDER BY created_at DESC').fetchall()
-        conn.close()
-        
+        users = User.query.order_by(User.created_at.desc()).all()
         return jsonify({
-            'users': [dict(user) for user in users]
+            'users': [{
+                'id': user.id,
+                'name': user.name,
+                'email': user.email,
+                'created_at': user.created_at.isoformat()
+            } for user in users]
         })
     except Exception as e:
         logging.error(f"Error fetching users: {e}")
@@ -102,21 +128,24 @@ def create_user():
         if '@' not in email or '.' not in email.split('@')[-1]:
             return jsonify({'error': 'Invalid email format'}), 400
         
-        conn = get_db_connection()
-        cursor = conn.execute('INSERT INTO users (name, email) VALUES (?, ?)', (name, email))
-        user_id = cursor.lastrowid
-        conn.commit()
-        conn.close()
+        # Check if email already exists
+        existing_user = User.query.filter_by(email=email).first()
+        if existing_user:
+            return jsonify({'error': 'Email already exists'}), 400
         
-        logging.info(f"User created: {user_id} - {email}")
+        # Create new user
+        user = User(name=name, email=email)
+        db.session.add(user)
+        db.session.commit()
+        
+        logging.info(f"User created: {user.id} - {email}")
         return jsonify({
-            'id': user_id,
+            'id': user.id,
             'message': 'User created successfully'
         }), 201
     
-    except sqlite3.IntegrityError:
-        return jsonify({'error': 'Email already exists'}), 400
     except Exception as e:
+        db.session.rollback()
         logging.error(f"Error creating user: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
@@ -136,26 +165,22 @@ def get_ratings(song_id):
         # Sanitize song_id
         song_id = str(song_id)[:100]
         
-        conn = get_db_connection()
-        ratings = conn.execute('''
-            SELECT 
-                SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) as thumbs_up,
-                SUM(CASE WHEN rating = -1 THEN 1 ELSE 0 END) as thumbs_down
-            FROM song_ratings WHERE song_id = ?
-        ''', (song_id,)).fetchone()
+        # Get rating counts
+        thumbs_up = SongRating.query.filter_by(song_id=song_id, rating=1).count()
+        thumbs_down = SongRating.query.filter_by(song_id=song_id, rating=-1).count()
         
+        # Get user's rating
         user_fingerprint = generate_user_fingerprint(request)
-        user_rating = conn.execute('''
-            SELECT rating FROM song_ratings WHERE song_id = ? AND user_fingerprint = ?
-        ''', (song_id, user_fingerprint)).fetchone()
-        
-        conn.close()
+        user_rating = SongRating.query.filter_by(
+            song_id=song_id, 
+            user_fingerprint=user_fingerprint
+        ).first()
         
         return jsonify({
             'song_id': song_id,
-            'thumbs_up': ratings['thumbs_up'] or 0,
-            'thumbs_down': ratings['thumbs_down'] or 0,
-            'user_rating': user_rating['rating'] if user_rating else None
+            'thumbs_up': thumbs_up,
+            'thumbs_down': thumbs_down,
+            'user_rating': user_rating.rating if user_rating else None
         })
     except Exception as e:
         logging.error(f"Error fetching ratings for {song_id}: {e}")
@@ -177,44 +202,46 @@ def rate_song(song_id):
         
         user_fingerprint = generate_user_fingerprint(request)
         
-        conn = get_db_connection()
-        try:
-            conn.execute('''
-                INSERT INTO song_ratings (song_id, user_fingerprint, rating)
-                VALUES (?, ?, ?)
-            ''', (song_id, user_fingerprint, rating))
-            conn.commit()
-            message = 'Rating submitted successfully'
-        except sqlite3.IntegrityError:
-            conn.execute('''
-                UPDATE song_ratings SET rating = ?, created_at = CURRENT_TIMESTAMP
-                WHERE song_id = ? AND user_fingerprint = ?
-            ''', (rating, song_id, user_fingerprint))
-            conn.commit()
+        # Check if user already rated this song
+        existing_rating = SongRating.query.filter_by(
+            song_id=song_id, 
+            user_fingerprint=user_fingerprint
+        ).first()
+        
+        if existing_rating:
+            # Update existing rating
+            existing_rating.rating = rating
+            existing_rating.created_at = datetime.utcnow()
             message = 'Rating updated successfully'
+        else:
+            # Create new rating
+            new_rating = SongRating(
+                song_id=song_id,
+                user_fingerprint=user_fingerprint,
+                rating=rating
+            )
+            db.session.add(new_rating)
+            message = 'Rating submitted successfully'
         
-        # Get updated ratings
-        ratings = conn.execute('''
-            SELECT 
-                SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) as thumbs_up,
-                SUM(CASE WHEN rating = -1 THEN 1 ELSE 0 END) as thumbs_down
-            FROM song_ratings WHERE song_id = ?
-        ''', (song_id,)).fetchone()
+        db.session.commit()
         
-        conn.close()
+        # Get updated rating counts
+        thumbs_up = SongRating.query.filter_by(song_id=song_id, rating=1).count()
+        thumbs_down = SongRating.query.filter_by(song_id=song_id, rating=-1).count()
         
         logging.info(f"Rating submitted for {song_id}: {rating}")
         return jsonify({
             'message': message,
             'song_id': song_id,
-            'thumbs_up': ratings['thumbs_up'] or 0,
-            'thumbs_down': ratings['thumbs_down'] or 0,
+            'thumbs_up': thumbs_up,
+            'thumbs_down': thumbs_down,
             'user_rating': rating
         })
         
     except ValueError:
         return jsonify({'error': 'Invalid rating value'}), 400
     except Exception as e:
+        db.session.rollback()
         logging.error(f"Error rating song {song_id}: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
@@ -223,10 +250,12 @@ def health_check():
     """Health check endpoint for load balancers"""
     try:
         # Quick database check
-        conn = get_db_connection()
-        conn.execute('SELECT 1').fetchone()
-        conn.close()
-        return jsonify({'status': 'healthy', 'timestamp': datetime.utcnow().isoformat()}), 200
+        db.session.execute(text('SELECT 1'))
+        return jsonify({
+            'status': 'healthy', 
+            'timestamp': datetime.utcnow().isoformat(),
+            'database': 'postgresql' if USE_POSTGRES else 'sqlite'
+        }), 200
     except Exception as e:
         logging.error(f"Health check failed: {e}")
         return jsonify({'status': 'unhealthy', 'error': str(e)}), 500

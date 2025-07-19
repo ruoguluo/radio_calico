@@ -30,25 +30,51 @@ services:
     container_name: radio-russell-prod
     ports:
       - "8000:8000"
-    volumes:
-      - radio-russell-data-prod:/app/data
     environment:
       - FLASK_ENV=production
       - FLASK_DEBUG=0
-      - DATABASE_PATH=/app/data/database.db
+      - DATABASE_URL=postgresql://radio_user:radio_password@postgres:5432/radio_db
+      - ALLOWED_ORIGINS=*
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: always
     networks:
       - radio-russell-network
     profiles:
       - prod
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/users"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 
-  # Optional: Reverse proxy for production (nginx)
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: radio-russell-postgres
+    environment:
+      POSTGRES_DB: radio_db
+      POSTGRES_USER: radio_user
+      POSTGRES_PASSWORD: radio_password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    restart: always
+    networks:
+      - radio-russell-network
+    profiles:
+      - prod
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U radio_user -d radio_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Nginx Reverse Proxy
   nginx:
     image: nginx:alpine
     container_name: radio-russell-nginx
@@ -58,19 +84,27 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - ./ssl:/etc/ssl/certs:ro
+      - nginx-cache:/var/cache/nginx
     depends_on:
-      - radio-russell-prod
+      radio-russell-prod:
+        condition: service_healthy
     networks:
       - radio-russell-network
     profiles:
       - prod
-      - nginx
     restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   radio-russell-data-dev:
     driver: local
-  radio-russell-data-prod:
+  postgres-data:
+    driver: local
+  nginx-cache:
     driver: local
 
 networks:

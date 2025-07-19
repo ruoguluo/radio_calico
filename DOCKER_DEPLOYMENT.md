@@ -21,15 +21,26 @@ This guide covers deploying Radio Russell using Docker containers for both devel
 open http://localhost:3000
 ```
 
-### Production Deployment
+### Production Deployment (PostgreSQL + nginx)
 
 ```bash
-# Build and start production environment with nginx
-./scripts/deploy.sh prod up
+# Build and start production environment with PostgreSQL and nginx
+./scripts/deploy-prod.sh
 
-# Access the application
+# Access the application via nginx
 open http://localhost
+
+# Access the application directly
+open http://localhost:8000
 ```
+
+## 🚀 Production Architecture Upgrade
+
+The enhanced production setup includes:
+- **PostgreSQL 15** - Robust database with persistent storage
+- **nginx** - Reverse proxy with caching, compression, and rate limiting
+- **Flask App** - Running with Gunicorn for improved performance
+- **Health Checks** - Automated container health monitoring
 
 ## Architecture Overview
 
@@ -39,12 +50,14 @@ open http://localhost
 - **Database**: SQLite in persistent volume
 - **Debug**: Enabled
 
-### Production Stack
-- **App Container**: Gunicorn WSGI server with 4 workers
-- **Reverse Proxy**: Nginx with security headers and rate limiting
-- **Ports**: 80 (nginx), 8000 (direct app access)
-- **Database**: SQLite in persistent volume
-- **Security**: Non-root user, input validation, logging
+### Enhanced Production Stack
+- **App Container**: Gunicorn WSGI server with 4 workers + Flask-SQLAlchemy ORM
+- **Database**: PostgreSQL 15 with persistent volumes and health checks
+- **Reverse Proxy**: Nginx with caching, compression, security headers, and rate limiting
+- **Ports**: 80 (nginx), 8000 (direct app access), 5432 (PostgreSQL - internal only)
+- **Performance**: Optimized nginx configuration with proxy caching
+- **Security**: Non-root user, input validation, comprehensive logging
+- **Monitoring**: Health checks for all services with auto-restart
 
 ## Container Details
 
@@ -121,34 +134,45 @@ docker run -d -p 8000:8000 --name radio-russell-prod radio-russell:prod
 - `FLASK_DEBUG=1`
 - `DATABASE_PATH=/app/data/database.db`
 
-### Production
+### Production (PostgreSQL)
 - `FLASK_ENV=production`
 - `FLASK_DEBUG=0`
-- `DATABASE_PATH=/app/data/database.db`
+- `DATABASE_URL=postgresql://radio_user:radio_password@postgres:5432/radio_db`
 - `ALLOWED_ORIGINS=your-domain.com,localhost` (optional)
+- `POSTGRES_DB=radio_db`
+- `POSTGRES_USER=radio_user`
+- `POSTGRES_PASSWORD=radio_password`
 
 ## Data Persistence
 
 ### Volumes
-- `radio-russell-data-dev`: Development database storage
-- `radio-russell-data-prod`: Production database storage
+- `radio-russell-data-dev`: Development SQLite database storage
+- `postgres-data`: Production PostgreSQL database storage
+- `nginx-cache`: Nginx proxy cache storage
 
 ### Backup Database
 ```bash
-# Development
+# Development (SQLite)
 docker cp radio-russell-dev:/app/data/database.db ./backup-dev.db
 
-# Production
-docker cp radio-russell-prod:/app/data/database.db ./backup-prod.db
+# Production (PostgreSQL)
+docker exec radio-russell-postgres pg_dump -U radio_user -d radio_db > backup-prod-$(date +%Y%m%d_%H%M%S).sql
+
+# Or use pg_dumpall for complete backup
+docker exec radio-russell-postgres pg_dumpall -U radio_user > backup-complete-$(date +%Y%m%d_%H%M%S).sql
 ```
 
 ### Restore Database
 ```bash
-# Development
+# Development (SQLite)
 docker cp ./backup-dev.db radio-russell-dev:/app/data/database.db
 
-# Production
-docker cp ./backup-prod.db radio-russell-prod:/app/data/database.db
+# Production (PostgreSQL)
+docker exec -i radio-russell-postgres psql -U radio_user -d radio_db < backup-prod-20231201_120000.sql
+
+# Or restore from container
+docker cp backup-prod.sql radio-russell-postgres:/tmp/
+docker exec radio-russell-postgres psql -U radio_user -d radio_db -f /tmp/backup-prod.sql
 ```
 
 ## Monitoring and Health Checks
