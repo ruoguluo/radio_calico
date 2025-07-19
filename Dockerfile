@@ -57,8 +57,10 @@ RUN groupadd -r radiouser && useradd -r -g radiouser radiouser
 # Copy source code
 COPY --chown=radiouser:radiouser . .
 
-# Create data directory with proper permissions
-RUN mkdir -p /app/data && chown -R radiouser:radiouser /app/data
+# Create data directory with proper permissions and setup service worker
+RUN mkdir -p /app/data && chown -R radiouser:radiouser /app/data && \
+    cp static/sw.js sw.js 2>/dev/null || true && \
+    chown radiouser:radiouser sw.js 2>/dev/null || true
 
 # Set environment for production
 ENV FLASK_ENV=production
@@ -75,5 +77,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Run production server with gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "120", "app_prod:app"]
+# Run production server with gunicorn using optimized app
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "120", "app_optimized:app"]

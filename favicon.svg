@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <!-- Pineapple body -->
+  <ellipse cx="16" cy="20" rx="8" ry="10" fill="#f4a000" stroke="#d18500" stroke-width="1"/>
+  
+  <!-- Diamond pattern on pineapple -->
+  <g fill="#e69500" opacity="0.7">
+    <polygon points="12,14 16,12 20,14 16,16"/>
+    <polygon points="10,18 14,16 18,18 14,20"/>
+    <polygon points="12,22 16,20 20,22 16,24"/>
+    <polygon points="14,26 16,24 18,26 16,28"/>
+    <polygon points="14,18 16,16 18,18 16,20"/>
+    <polygon points="16,22 18,20 20,22 18,24"/>
+  </g>
+  
+  <!-- Pineapple leaves/crown -->
+  <g fill="#2d7d00" stroke="#1a5200" stroke-width="0.5">
+    <path d="M14 12 L13 6 L15 8 L16 4 L17 8 L19 6 L18 12" fill="#4caf50"/>
+    <path d="M12 12 L11 7 L13 9 L14 5 L15 9 L16 7 L15 12" fill="#388e3c"/>
+    <path d="M16 12 L17 6 L18 9 L19 5 L20 9 L21 7 L20 12" fill="#388e3c"/>
+  </g>
+  
+  <!-- Highlight on pineapple -->
+  <ellipse cx="13" cy="17" rx="2" ry="3" fill="#fff3a0" opacity="0.4"/>
+</svg>
