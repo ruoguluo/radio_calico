@@ -1,13 +1,11 @@
 import hashlib
+import os
 import sqlite3
 from datetime import datetime, timedelta
-import gzip
-import os
-from io import BytesIO
 
-from flask import Flask, jsonify, request, send_from_directory, make_response, g
-from flask_cors import CORS
+from flask import Flask, g, jsonify, make_response, request, send_from_directory
 from flask_compress import Compress
+from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
@@ -23,10 +21,12 @@ STATIC_CACHE_TIMEOUT = 86400 * 30  # 30 days for static files
 # In-memory cache for frequently accessed data
 cache = {}
 
+
 def get_cache_key(prefix, *args):
     """Generate cache key from prefix and arguments"""
     key_data = f"{prefix}:{':'.join(map(str, args))}"
     return hashlib.md5(key_data.encode()).hexdigest()
+
 
 def get_cached_response(cache_key, max_age=CACHE_TIMEOUT):
     """Get cached response if still valid"""
@@ -39,30 +39,34 @@ def get_cached_response(cache_key, max_age=CACHE_TIMEOUT):
             del cache[cache_key]
     return None
 
+
 def set_cache(cache_key, data):
     """Set cache entry with timestamp"""
     cache[cache_key] = (data, datetime.now())
-    
+
     # Simple cache cleanup - keep only last 100 entries
     if len(cache) > 100:
         oldest_key = min(cache.keys(), key=lambda k: cache[k][1])
         del cache[oldest_key]
 
+
 def get_db_connection():
     """Get database connection with connection pooling"""
-    if not hasattr(g, 'db_connection'):
+    if not hasattr(g, "db_connection"):
         g.db_connection = sqlite3.connect(DATABASE)
         g.db_connection.row_factory = sqlite3.Row
         # Enable WAL mode for better concurrent performance
-        g.db_connection.execute('PRAGMA journal_mode=WAL')
+        g.db_connection.execute("PRAGMA journal_mode=WAL")
     return g.db_connection
+
 
 @app.teardown_appcontext
 def close_db_connection(exception):
     """Close database connection at end of request"""
-    db = getattr(g, 'db_connection', None)
+    db = getattr(g, "db_connection", None)
     if db is not None:
         db.close()
+
 
 def init_db():
     conn = get_db_connection()
@@ -88,85 +92,99 @@ def init_db():
         )
     """
     )
-    
+
     # Create indexes for better query performance
-    conn.execute('CREATE INDEX IF NOT EXISTS idx_song_ratings_song_id ON song_ratings(song_id)')
-    conn.execute('CREATE INDEX IF NOT EXISTS idx_song_ratings_fingerprint ON song_ratings(user_fingerprint)')
-    conn.execute('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)')
-    
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_song_ratings_song_id ON song_ratings(song_id)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_song_ratings_fingerprint ON song_ratings(user_fingerprint)"
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
+
     conn.commit()
+
 
 def add_cache_headers(response, max_age=CACHE_TIMEOUT):
     """Add caching headers to response"""
-    response.headers['Cache-Control'] = f'public, max-age={max_age}'
-    response.headers['ETag'] = hashlib.md5(response.get_data()).hexdigest()[:16]
+    response.headers["Cache-Control"] = f"public, max-age={max_age}"
+    response.headers["ETag"] = hashlib.md5(response.get_data()).hexdigest()[:16]
     return response
+
 
 def add_security_headers(response):
     """Add security headers to response"""
-    response.headers['X-Content-Type-Options'] = 'nosniff'
-    response.headers['X-Frame-Options'] = 'DENY'
-    response.headers['X-XSS-Protection'] = '1; mode=block'
-    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     return response
+
 
 @app.after_request
 def after_request(response):
     """Add headers to all responses"""
     response = add_security_headers(response)
-    
+
     # Add CORS headers
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
-    
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+
     return response
+
 
 @app.route("/")
 def home():
     response = make_response(send_from_directory(".", "index_optimized.html"))
     return add_cache_headers(response, max_age=3600)  # Cache for 1 hour
 
+
 @app.route("/test")
 def test_page():
     response = make_response(send_from_directory("static", "index.html"))
     return add_cache_headers(response, max_age=3600)
 
+
 @app.route("/static/<path:filename>")
 def serve_static(filename):
     """Serve static files with aggressive caching"""
     response = make_response(send_from_directory("static", filename))
-    
+
     # Set different cache times based on file type
-    if filename.endswith(('.css', '.js')):
+    if filename.endswith((".css", ".js")):
         cache_time = STATIC_CACHE_TIMEOUT  # 30 days
-    elif filename.endswith(('.png', '.jpg', '.jpeg', '.webp', '.gif')):
+    elif filename.endswith((".png", ".jpg", ".jpeg", ".webp", ".gif")):
         cache_time = STATIC_CACHE_TIMEOUT  # 30 days
     else:
         cache_time = 3600  # 1 hour for other files
-        
+
     return add_cache_headers(response, max_age=cache_time)
+
 
 @app.route("/api/users", methods=["GET"])
 def get_users():
     """Get users with caching"""
     cache_key = get_cache_key("users_list")
     cached_response = get_cached_response(cache_key, max_age=60)  # 1 minute cache
-    
+
     if cached_response:
         response = make_response(jsonify(cached_response))
-        response.headers['X-Cache'] = 'HIT'
+        response.headers["X-Cache"] = "HIT"
         return add_cache_headers(response, max_age=60)
-    
+
     conn = get_db_connection()
-    users = conn.execute("SELECT * FROM users ORDER BY created_at DESC LIMIT 100").fetchall()
-    
+    users = conn.execute(
+        "SELECT * FROM users ORDER BY created_at DESC LIMIT 100"
+    ).fetchall()
+
     result = {"users": [dict(user) for user in users]}
     set_cache(cache_key, result)
-    
+
     response = make_response(jsonify(result))
-    response.headers['X-Cache'] = 'MISS'
+    response.headers["X-Cache"] = "MISS"
     return add_cache_headers(response, max_age=60)
+
 
 @app.route("/api/users", methods=["POST"])
 def create_user():
@@ -179,10 +197,10 @@ def create_user():
     # Input validation and sanitization
     name = str(data["name"]).strip()[:100]
     email = str(data["email"]).strip().lower()[:100]
-    
+
     if not name or not email:
         return jsonify({"error": "Name and email cannot be empty"}), 400
-    
+
     # Basic email validation
     if "@" not in email or "." not in email.split("@")[-1]:
         return jsonify({"error": "Invalid email format"}), 400
@@ -194,7 +212,7 @@ def create_user():
         )
         user_id = cursor.lastrowid
         conn.commit()
-        
+
         # Clear users cache
         cache_key = get_cache_key("users_list")
         if cache_key in cache:
@@ -204,37 +222,39 @@ def create_user():
 
     except sqlite3.IntegrityError:
         return jsonify({"error": "Email already exists"}), 400
-    except Exception as e:
+    except Exception:
         return jsonify({"error": "Internal server error"}), 500
+
 
 def generate_user_fingerprint(request):
     """Generate user fingerprint with better hashing"""
     user_agent = request.headers.get("User-Agent", "")[:500]
     ip_address = request.remote_addr or ""
-    
+
     # Use X-Forwarded-For if behind proxy
     if request.headers.get("X-Forwarded-For"):
         ip_address = request.headers.get("X-Forwarded-For").split(",")[0].strip()
-    
+
     fingerprint_data = f"{user_agent}_{ip_address}"
     return hashlib.sha256(fingerprint_data.encode()).hexdigest()[:32]
+
 
 @app.route("/api/ratings/<song_id>", methods=["GET"])
 def get_ratings(song_id):
     """Get ratings with caching and optimized queries"""
     song_id = str(song_id)[:100]  # Sanitize input
-    
+
     cache_key = get_cache_key("ratings", song_id)
     cached_response = get_cached_response(cache_key, max_age=30)  # 30 second cache
-    
+
     if cached_response:
         response = make_response(jsonify(cached_response))
-        response.headers['X-Cache'] = 'HIT'
+        response.headers["X-Cache"] = "HIT"
         return add_cache_headers(response, max_age=30)
 
     try:
         conn = get_db_connection()
-        
+
         # Single optimized query for all rating data
         ratings_query = """
             SELECT 
@@ -247,7 +267,7 @@ def get_ratings(song_id):
         user_fingerprint = generate_user_fingerprint(request)
         user_rating = conn.execute(
             "SELECT rating FROM song_ratings WHERE song_id = ? AND user_fingerprint = ?",
-            (song_id, user_fingerprint)
+            (song_id, user_fingerprint),
         ).fetchone()
 
         result = {
@@ -256,21 +276,22 @@ def get_ratings(song_id):
             "thumbs_down": ratings["thumbs_down"] or 0,
             "user_rating": user_rating["rating"] if user_rating else None,
         }
-        
+
         set_cache(cache_key, result)
-        
+
         response = make_response(jsonify(result))
-        response.headers['X-Cache'] = 'MISS'
+        response.headers["X-Cache"] = "MISS"
         return add_cache_headers(response, max_age=30)
-        
-    except Exception as e:
+
+    except Exception:
         return jsonify({"error": "Internal server error"}), 500
+
 
 @app.route("/api/ratings/<song_id>", methods=["POST"])
 def rate_song(song_id):
     """Rate song with validation and cache invalidation"""
     song_id = str(song_id)[:100]  # Sanitize input
-    
+
     try:
         data = request.get_json()
         if not data or "rating" not in data:
@@ -278,11 +299,14 @@ def rate_song(song_id):
 
         rating = int(data["rating"])
         if rating not in [1, -1]:
-            return jsonify({"error": "Rating must be 1 (thumbs up) or -1 (thumbs down)"}), 400
+            return (
+                jsonify({"error": "Rating must be 1 (thumbs up) or -1 (thumbs down)"}),
+                400,
+            )
 
         user_fingerprint = generate_user_fingerprint(request)
         conn = get_db_connection()
-        
+
         # Use UPSERT for better performance
         try:
             conn.execute(
@@ -300,22 +324,23 @@ def rate_song(song_id):
             # Fallback for older SQLite versions
             existing = conn.execute(
                 "SELECT id FROM song_ratings WHERE song_id = ? AND user_fingerprint = ?",
-                (song_id, user_fingerprint)
+                (song_id, user_fingerprint),
             ).fetchone()
-            
+
             if existing:
                 conn.execute(
-                    "UPDATE song_ratings SET rating = ?, created_at = CURRENT_TIMESTAMP WHERE song_id = ? AND user_fingerprint = ?",
-                    (rating, song_id, user_fingerprint)
+                    """UPDATE song_ratings SET rating = ?, created_at = CURRENT_TIMESTAMP 
+                    WHERE song_id = ? AND user_fingerprint = ?""",
+                    (rating, song_id, user_fingerprint),
                 )
                 message = "Rating updated successfully"
             else:
                 conn.execute(
                     "INSERT INTO song_ratings (song_id, user_fingerprint, rating) VALUES (?, ?, ?)",
-                    (song_id, user_fingerprint, rating)
+                    (song_id, user_fingerprint, rating),
                 )
                 message = "Rating submitted successfully"
-            
+
             conn.commit()
 
         # Get updated ratings
@@ -341,13 +366,14 @@ def rate_song(song_id):
             "thumbs_down": ratings["thumbs_down"] or 0,
             "user_rating": rating,
         }
-        
+
         return jsonify(result)
 
     except ValueError:
         return jsonify({"error": "Invalid rating value"}), 400
-    except Exception as e:
+    except Exception:
         return jsonify({"error": "Internal server error"}), 500
+
 
 @app.route("/health")
 def health_check():
@@ -355,33 +381,39 @@ def health_check():
     try:
         conn = get_db_connection()
         conn.execute("SELECT 1").fetchone()
-        
-        return jsonify({
-            "status": "healthy",
-            "timestamp": datetime.utcnow().isoformat(),
-            "database": "sqlite",
-            "cache_size": len(cache)
-        })
+
+        return jsonify(
+            {
+                "status": "healthy",
+                "timestamp": datetime.utcnow().isoformat(),
+                "database": "sqlite",
+                "cache_size": len(cache),
+            }
+        )
     except Exception as e:
         return jsonify({"status": "unhealthy", "error": str(e)}), 500
+
 
 # Error handlers
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({"error": "Not found"}), 404
 
+
 @app.errorhandler(429)
 def rate_limit_exceeded(error):
     return jsonify({"error": "Rate limit exceeded"}), 429
+
 
 @app.errorhandler(500)
 def internal_error(error):
     return jsonify({"error": "Internal server error"}), 500
 
+
 if __name__ == "__main__":
     init_db()
     print(f"Database initialized at {DATABASE}")
-    
+
     # Enable debug mode only in development
     debug_mode = os.getenv("FLASK_ENV") == "development"
     app.run(debug=debug_mode, host="0.0.0.0", port=3000, threaded=True)
