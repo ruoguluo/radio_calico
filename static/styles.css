@@ -1,0 +1,547 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #F0F0F0;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    color: #231F20;
+    line-height: 1.6;
+}
+
+.header {
+    background: #5A5A5A;
+    padding: 16px 0;
+    text-align: center;
+    margin-bottom: 0;
+}
+
+.header-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.logo {
+    width: 40px;
+    height: 40px;
+}
+
+.main-title {
+    font-family: "Montserrat", sans-serif;
+    font-weight: 400;
+    font-size: 2rem;
+    color: #D8F2D5;
+    margin: 0;
+}
+
+.main-content {
+    background: #FFFFFF;
+    padding: 40px;
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    align-items: start;
+}
+
+.album-art-section {
+    position: relative;
+}
+
+.album-art-large {
+    width: 100%;
+    max-width: 500px;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.year-banner {
+    position: absolute;
+    top: 20px;
+    right: -10px;
+    background: #E74C3C;
+    color: white;
+    padding: 8px 16px;
+    font-family: "Montserrat", sans-serif;
+    font-weight: 700;
+    font-size: 1.2rem;
+    transform: rotate(15deg);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.track-info-section {
+    padding: 20px 0;
+}
+
+.artist-name {
+    font-family: "Montserrat", sans-serif;
+    font-weight: 700;
+    font-size: 3.5rem;
+    color: #231F20;
+    margin-bottom: 16px;
+    line-height: 1.1;
+}
+
+.song-title {
+    font-family: "Montserrat", sans-serif;
+    font-weight: 400;
+    font-size: 2rem;
+    color: #231F20;
+    margin-bottom: 24px;
+}
+
+.album-info {
+    font-family: "Open Sans", sans-serif;
+    font-size: 1.1rem;
+    color: #666;
+    margin-bottom: 32px;
+}
+
+.quality-info {
+    font-family: "Open Sans", sans-serif;
+    font-size: 0.9rem;
+    color: #999;
+    margin-bottom: 8px;
+}
+
+.rating-section {
+    margin: 24px 0;
+}
+
+.rating-label {
+    font-family: "Open Sans", sans-serif;
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 8px;
+}
+
+.audio-player {
+    background: #333;
+    border-radius: 24px;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 32px;
+}
+
+.play-button {
+    width: 40px;
+    height: 40px;
+    background: #E74C3C;
+    border: none;
+    border-radius: 50%;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.time-display {
+    color: white;
+    font-family: "Open Sans", sans-serif;
+    font-size: 0.9rem;
+}
+
+.volume-icon {
+    color: white;
+    font-size: 18px;
+}
+
+.volume-slider {
+    flex: 1;
+    accent-color: white;
+}
+
+.widget-title {
+    font-family: "Montserrat", sans-serif;
+    font-weight: 600;
+    font-size: 2.25rem;
+    color: #1F4E23;
+    margin-bottom: 20px;
+    line-height: 1.3;
+}
+
+.station-name {
+    font-family: "Montserrat", sans-serif;
+    font-weight: 600;
+    font-size: 1.5rem;
+    color: #1F4E23;
+    margin-bottom: 8px;
+}
+
+.station-tagline {
+    font-family: "Open Sans", sans-serif;
+    font-size: 0.875rem;
+    color: #38A29D;
+    margin-bottom: 24px;
+    line-height: 1.4;
+}
+
+.track-info {
+    text-align: left;
+    margin-bottom: 15px;
+}
+
+.now-playing-content {
+    display: flex;
+    gap: 15px;
+    align-items: flex-start;
+}
+
+.album-art {
+    width: 100px;
+    height: 100px;
+    border-radius: 10px;
+    object-fit: cover;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    flex-shrink: 0;
+}
+
+.track-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.track-title {
+    font-family: "Montserrat", sans-serif;
+    font-weight: 500;
+    font-size: 1.5rem;
+    line-height: 1.4;
+    margin-bottom: 8px;
+    color: #EFA63C;
+}
+
+.track-artist {
+    font-family: "Open Sans", sans-serif;
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 4px;
+    color: #231F20;
+}
+
+.track-album {
+    font-family: "Open Sans", sans-serif;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    color: #38A29D;
+    font-style: italic;
+}
+
+.track-year {
+    font-family: "Open Sans", sans-serif;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    color: #38A29D;
+    margin-top: 4px;
+}
+
+.stream-quality {
+    background: #D8F2D5;
+    padding: 16px;
+    border-radius: 4px;
+    margin-top: 16px;
+    font-family: "Open Sans", sans-serif;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    color: #1F4E23;
+}
+
+.rating-section {
+    margin-top: 16px;
+    padding: 16px;
+    background: #D8F2D5;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.rating-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.rating-btn {
+    background: #1F4E23;
+    border: 2px solid #1F4E23;
+    color: #FFFFFF;
+    padding: 12px 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: "Open Sans", sans-serif;
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.rating-btn:hover {
+    background: #38A29D;
+    border-color: #38A29D;
+}
+
+.rating-btn.active-up {
+    background: #38A29D;
+    border-color: #38A29D;
+}
+
+.rating-btn.active-down {
+    background: #EFA63C;
+    border-color: #EFA63C;
+}
+
+.rating-stats {
+    font-family: "Open Sans", sans-serif;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    color: #1F4E23;
+    margin-top: 8px;
+}
+
+.rating-count {
+    display: inline-block;
+    margin: 0 8px;
+}
+
+.recent-track {
+    padding: 16px;
+    margin-bottom: 16px;
+    background: #F5EADA;
+    border-radius: 4px;
+    border-left: 4px solid #38A29D;
+}
+
+.recent-track:last-child {
+    margin-bottom: 0;
+}
+
+.recent-track .track-title {
+    font-family: "Montserrat", sans-serif;
+    font-weight: 500;
+    font-size: 1rem;
+    line-height: 1.4;
+    color: #EFA63C;
+    margin-bottom: 4px;
+}
+
+.recent-track .track-artist {
+    font-family: "Open Sans", sans-serif;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    color: #231F20;
+    margin-bottom: 2px;
+}
+
+.recent-track .track-album {
+    font-family: "Open Sans", sans-serif;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    color: #38A29D;
+    font-style: italic;
+}
+
+.controls {
+    margin: 24px 0;
+}
+
+.play-btn {
+    background: #1F4E23;
+    border: 2px solid #1F4E23;
+    color: #FFFFFF;
+    padding: 12px 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: "Open Sans", sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: all 0.3s ease;
+    margin: 0 8px;
+    box-shadow: 0 4px 8px rgba(31, 78, 35, 0.3);
+}
+
+.play-btn:hover {
+    background: #38A29D;
+    border-color: #38A29D;
+    color: #FFFFFF;
+    box-shadow: 0 6px 12px rgba(56, 162, 157, 0.4);
+    transform: translateY(-2px);
+}
+
+.volume-control {
+    margin-top: 24px;
+}
+
+.volume-control label {
+    font-family: "Open Sans", sans-serif;
+    font-size: 0.875rem;
+    color: #1F4E23;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.volume-slider {
+    width: 100%;
+    margin-top: 8px;
+    accent-color: #38A29D;
+}
+
+.status {
+    margin-top: 16px;
+    padding: 12px;
+    background: #D8F2D5;
+    border-radius: 4px;
+    font-family: "Open Sans", sans-serif;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    color: #1F4E23;
+}
+
+.status.connecting {
+    color: #EFA63C;
+    background: #F5EADA;
+}
+
+.status.playing {
+    color: #1F4E23;
+    background: #D8F2D5;
+}
+
+.status.error {
+    color: #FFFFFF;
+    background: #EFA63C;
+}
+
+.previous-tracks {
+    background: #D8F2D5;
+    padding: 40px;
+    margin-top: 0;
+}
+
+.previous-tracks h3 {
+    font-family: "Montserrat", sans-serif;
+    font-weight: 600;
+    font-size: 1.5rem;
+    color: #231F20;
+    margin-bottom: 24px;
+    text-align: center;
+}
+
+.track-list {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.track-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(35, 31, 32, 0.1);
+}
+
+.track-item:last-child {
+    border-bottom: none;
+}
+
+.track-artist-name {
+    font-family: "Open Sans", sans-serif;
+    font-weight: 600;
+    color: #231F20;
+}
+
+.track-song-name {
+    font-family: "Open Sans", sans-serif;
+    color: #666;
+    font-style: italic;
+}
+
+@media (max-width: 768px) {
+    .main-content {
+        grid-template-columns: 1fr;
+        gap: 32px;
+        padding: 20px;
+    }
+    
+    .artist-name {
+        font-size: 2.5rem;
+    }
+    
+    .song-title {
+        font-size: 1.5rem;
+    }
+}
+
+.audio-controls {
+    margin-bottom: 30px;
+}
+
+audio {
+    width: 100%;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.status {
+    margin-top: 20px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    font-size: 0.9em;
+}
+
+.status.connecting {
+    color: #ffd700;
+}
+
+.status.playing {
+    color: #90ee90;
+}
+
+.status.error {
+    color: #ff6b6b;
+}
+
+.controls {
+    margin: 20px 0;
+}
+
+.play-btn {
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 50px;
+    cursor: pointer;
+    font-size: 1.1em;
+    transition: all 0.3s ease;
+    margin: 0 10px;
+}
+
+.play-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+}
+
+.volume-control {
+    margin-top: 20px;
+}
+
+.volume-slider {
+    width: 100%;
+    margin-top: 10px;
+}

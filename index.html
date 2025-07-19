@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radio Calico - Live Stream</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Open+Sans:wght@400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="static/styles.css">
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <img src="static/RadioCalicoLogoTM.png" alt="Radio Calico Logo" class="logo">
+            <h1 class="main-title">Radio Calico</h1>
+        </div>
+    </div>
+    
+    <div class="main-content">
+        <div class="album-art-section">
+            <img id="albumArt" class="album-art-large" src="https://d3d4yli4hf5bmh.cloudfront.net/cover.jpg" alt="Album Art">
+            <div class="year-banner" id="yearBanner">1983</div>
+        </div>
+
+        <div class="track-info-section">
+            <h1 class="artist-name" id="currentArtist">Loading...</h1>
+            <h2 class="song-title" id="currentTitle">Loading...</h2>
+            <p class="album-info" id="currentAlbum">Loading...</p>
+            
+            <div class="quality-info">Source quality: 16-bit 44.1kHz</div>
+            <div class="quality-info" id="streamQuality">Stream quality: 48kHz FLAC / HLS Lossless</div>
+            
+            <div class="rating-section">
+                <div class="rating-label">Rate this track:</div>
+                <div class="rating-buttons">
+                    <button class="rating-btn" id="thumbsUpBtn" style="background: none; border: none; font-size: 24px; cursor: pointer;">
+                        👍 <span id="thumbsUpCount">0</span>
+                    </button>
+                    <button class="rating-btn" id="thumbsDownBtn" style="background: none; border: none; font-size: 24px; cursor: pointer;">
+                        👎 <span id="thumbsDownCount">0</span>
+                    </button>
+                </div>
+                <div class="rating-stats" id="ratingStats">Rate this song to see community ratings</div>
+            </div>
+
+            <div class="audio-player">
+                <button class="play-button" id="playBtn">▶</button>
+                <span class="time-display">0:35 / Live</span>
+                <span class="volume-icon">🔊</span>
+                <input type="range" id="volumeSlider" class="volume-slider" min="0" max="1" step="0.1" value="0.7">
+            </div>
+            
+            <audio id="audioPlayer" style="display: none;" preload="none">
+                Your browser does not support the audio element.
+            </audio>
+            
+            <div class="status" id="status" style="margin-top: 16px; font-size: 0.9rem; color: #666;">Ready to play</div>
+        </div>
+    </div>
+
+    <div class="previous-tracks">
+        <h3>Previous tracks:</h3>
+        <div class="track-list" id="recentTracks">
+            <div class="track-item">
+                <span class="track-artist-name">Loading...</span>
+                <span class="track-song-name">Loading...</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="static/script.js"></script>
+</body>
+</html>
