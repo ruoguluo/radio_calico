@@ -1,146 +1,88 @@
 # RadioCalico System Architecture
 
 ```mermaid
-graph TB
+flowchart TD
     %% External Services
-    subgraph "External Services"
-        CDN[CloudFront CDN<br/>Audio Stream & Metadata]
-        HLS[HLS Stream<br/>d3d4yli4hf5bmh.cloudfront.net/hls/live.m3u8]
-        META[Metadata API<br/>metadatav2.json]
-        COVER[Album Art<br/>cover.jpg]
+    subgraph EXT["☁️ External Services"]
+        CDN["CloudFront CDN"]
+        HLS["HLS Audio Stream<br/>live.m3u8"]
+        META["Metadata API<br/>metadatav2.json"]
+        COVER["Album Art<br/>cover.jpg"]
     end
     
-    %% Client Layer
-    subgraph "Client Layer"
-        BROWSER[Web Browser]
-        subgraph "Frontend Components"
-            HTML[index.html<br/>UI Layout]
-            CSS[styles.css<br/>Brand Styling]
-            JS[script.js<br/>Audio Player Logic]
-            HLSJS[HLS.js Library<br/>Streaming Support]
-        end
-    end
+    %% User/Client
+    USER["👤 User"]
+    BROWSER["🌐 Web Browser"]
     
     %% Development Environment
-    subgraph "Development Environment"
-        DEV_COMPOSE[radio-russell-dev<br/>:3000]
-        DEV_DB[(SQLite<br/>database.db)]
-        DEV_VOL[/app/data Volume]
+    subgraph DEV["🛠️ Development Environment"]
+        DEV_APP["Flask Dev Server<br/>:3000"]
+        DEV_DB[("SQLite<br/>database.db")]
     end
     
-    %% Production Environment
-    subgraph "Production Environment"
-        subgraph "Reverse Proxy Layer"
-            NGINX[Nginx<br/>:80, :443<br/>Load Balancer<br/>Rate Limiting<br/>SSL Termination]
-        end
-        
-        subgraph "Application Layer"
-            APP[Flask Application<br/>radio-russell-prod:8000<br/>Gunicorn WSGI]
-        end
-        
-        subgraph "Database Layer"
-            POSTGRES[(PostgreSQL 15<br/>radio_db<br/>:5432)]
-        end
-        
-        subgraph "Storage"
-            PG_VOL[postgres-data Volume]
-            NGINX_CACHE[nginx-cache Volume]
-            SSL_CERTS[SSL Certificates]
-        end
-    end
-    
-    %% API Endpoints
-    subgraph "Flask API Endpoints"
-        API_USERS[/api/users<br/>GET/POST<br/>User Management]
-        API_RATINGS[/api/ratings/&lt;song_id&gt;<br/>GET/POST<br/>Song Ratings]
-        HEALTH[/health<br/>Health Checks]
-        STATIC_FILES[/static/*<br/>Static Assets]
-        HOME[/<br/>Main Interface]
-    end
-    
-    %% Data Models
-    subgraph "Database Schema"
-        USERS_TBL[(users table<br/>id, name, email, created_at)]
-        RATINGS_TBL[(song_ratings table<br/>id, song_id, user_fingerprint<br/>rating, created_at)]
+    %% Production Environment  
+    subgraph PROD["🚀 Production Environment"]
+        NGINX["Nginx Proxy<br/>:80/:443"]
+        APP["Flask App<br/>Gunicorn :8000"]
+        POSTGRES[("PostgreSQL<br/>radio_db")]
     end
     
     %% Docker Network
-    subgraph "Docker Network: radio-russell-network"
-        DEV_NET[Development Services]
-        PROD_NET[Production Services]
+    subgraph DOCKER["🐳 Docker Network"]
+        CONTAINERS["radio-russell-network"]
     end
     
-    %% Connections
-    %% Client to External Services
+    %% Data Flow
+    USER --> BROWSER
+    BROWSER --> DEV_APP
+    BROWSER --> NGINX
     BROWSER --> CDN
+    
+    %% External CDN connections
     CDN --> HLS
-    CDN --> META
+    CDN --> META  
     CDN --> COVER
     
-    %% Client Frontend Components
-    BROWSER --> HTML
-    HTML --> CSS
-    HTML --> JS
-    JS --> HLSJS
+    %% Production flow
+    NGINX --> APP
+    APP --> POSTGRES
     
-    %% Client to Application
-    BROWSER -->|HTTP/HTTPS| NGINX
-    BROWSER -->|Development| DEV_COMPOSE
+    %% Development flow
+    DEV_APP --> DEV_DB
     
-    %% Production Flow
-    NGINX -->|Load Balance| APP
-    APP --> API_USERS
-    APP --> API_RATINGS
-    APP --> HEALTH
-    APP --> STATIC_FILES
-    APP --> HOME
+    %% Docker network
+    DEV_APP -.-> CONTAINERS
+    NGINX -.-> CONTAINERS
+    APP -.-> CONTAINERS
+    POSTGRES -.-> CONTAINERS
     
-    %% Database Connections
-    APP -->|Production| POSTGRES
-    DEV_COMPOSE -->|Development| DEV_DB
+    %% API endpoints (represented as part of the apps)
+    APP --> |"API Endpoints"| ENDPOINTS["🔌 /api/users<br/>🔌 /api/ratings<br/>🔌 /health<br/>🔌 /static"]
+    DEV_APP --> |"API Endpoints"| ENDPOINTS
     
-    %% Database Schema
-    POSTGRES --> USERS_TBL
-    POSTGRES --> RATINGS_TBL
-    DEV_DB --> USERS_TBL
-    DEV_DB --> RATINGS_TBL
+    %% Frontend assets
+    BROWSER --> |"Loads"| FRONTEND["📄 index.html<br/>🎨 styles.css<br/>⚡ script.js<br/>📻 HLS.js"]
     
-    %% Storage Connections
-    POSTGRES --> PG_VOL
-    NGINX --> NGINX_CACHE
-    NGINX --> SSL_CERTS
-    DEV_COMPOSE --> DEV_VOL
-    
-    %% Metadata Flow
-    JS -->|Fetch Every 10s| META
-    JS -->|Load Ratings| API_RATINGS
-    JS -->|Submit Ratings| API_RATINGS
-    JS -->|User Management| API_USERS
-    
-    %% Audio Streaming
-    HLSJS -->|Stream Audio| HLS
-    JS -->|Control| HLSJS
-    
-    %% Network Grouping
-    DEV_COMPOSE --> DEV_NET
-    NGINX --> PROD_NET
-    APP --> PROD_NET
-    POSTGRES --> PROD_NET
+    %% Real-time data flows
+    BROWSER -.->|"Metadata Polling<br/>(10s interval)"| META
+    BROWSER -.->|"Audio Stream"| HLS
+    BROWSER -.->|"Album Art"| COVER
     
     %% Styling
-    classDef external fill:#E8F4FD,stroke:#1E88E5,stroke-width:2px
-    classDef frontend fill:#E8F5E8,stroke:#4CAF50,stroke-width:2px
-    classDef backend fill:#FFF3E0,stroke:#FF9800,stroke-width:2px
-    classDef database fill:#F3E5F5,stroke:#9C27B0,stroke-width:2px
-    classDef infrastructure fill:#FFEBEE,stroke:#F44336,stroke-width:2px
-    classDef storage fill:#F1F8E9,stroke:#8BC34A,stroke-width:2px
+    classDef external fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef client fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef dev fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef prod fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    classDef database fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    classDef docker fill:#e3f2fd,stroke:#0277bd,stroke-width:2px
     
     class CDN,HLS,META,COVER external
-    class BROWSER,HTML,CSS,JS,HLSJS frontend
-    class APP,DEV_COMPOSE,API_USERS,API_RATINGS,HEALTH,STATIC_FILES,HOME backend
-    class POSTGRES,DEV_DB,USERS_TBL,RATINGS_TBL database
-    class NGINX,DEV_NET,PROD_NET infrastructure
-    class PG_VOL,NGINX_CACHE,SSL_CERTS,DEV_VOL storage
+    class USER,BROWSER,FRONTEND client
+    class DEV_APP,DEV_DB dev
+    class NGINX,APP prod
+    class POSTGRES database
+    class DOCKER,CONTAINERS docker
+    class ENDPOINTS client
 ```
 
 ## Architecture Overview
