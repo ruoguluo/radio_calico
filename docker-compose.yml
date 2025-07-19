@@ -2,32 +2,32 @@ version: '3.8'
 
 services:
   # Development service
-  radio-russell-dev:
+  radio-boluoba-dev:
     build:
       context: .
       target: development
-    container_name: radio-russell-dev
+    container_name: radio-boluoba-dev
     ports:
       - "3000:3000"
     volumes:
       - .:/app
-      - radio-russell-data-dev:/app/data
+      - radio-boluoba-data-dev:/app/data
     environment:
       - FLASK_ENV=development
       - FLASK_DEBUG=1
       - DATABASE_PATH=/app/data/database.db
     restart: unless-stopped
     networks:
-      - radio-russell-network
+      - radio-boluoba-network
     profiles:
       - dev
 
   # Production service
-  radio-russell-prod:
+  radio-boluoba-prod:
     build:
       context: .
       target: production
-    container_name: radio-russell-prod
+    container_name: radio-boluoba-prod
     ports:
       - "8000:8000"
     environment:
@@ -40,7 +40,7 @@ services:
         condition: service_healthy
     restart: always
     networks:
-      - radio-russell-network
+      - radio-boluoba-network
     profiles:
       - prod
     healthcheck:
@@ -53,7 +53,7 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
-    container_name: radio-russell-postgres
+    container_name: radio-boluoba-postgres
     environment:
       POSTGRES_DB: radio_db
       POSTGRES_USER: radio_user
@@ -64,7 +64,7 @@ services:
       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
     restart: always
     networks:
-      - radio-russell-network
+      - radio-boluoba-network
     profiles:
       - prod
     healthcheck:
@@ -77,7 +77,7 @@ services:
   # Nginx Reverse Proxy
   nginx:
     image: nginx:alpine
-    container_name: radio-russell-nginx
+    container_name: radio-boluoba-nginx
     ports:
       - "80:80"
       - "443:443"
@@ -86,10 +86,10 @@ services:
       - ./ssl:/etc/ssl/certs:ro
       - nginx-cache:/var/cache/nginx
     depends_on:
-      radio-russell-prod:
+      radio-boluoba-prod:
         condition: service_healthy
     networks:
-      - radio-russell-network
+      - radio-boluoba-network
     profiles:
       - prod
     restart: always
@@ -100,7 +100,7 @@ services:
       retries: 3
 
 volumes:
-  radio-russell-data-dev:
+  radio-boluoba-data-dev:
     driver: local
   postgres-data:
     driver: local
@@ -108,5 +108,5 @@ volumes:
     driver: local
 
 networks:
-  radio-russell-network:
+  radio-boluoba-network:
     driver: bridge

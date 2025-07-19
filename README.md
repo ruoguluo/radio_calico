@@ -1,4 +1,4 @@
-# Radio Russell 🎵
+# Radio BoLuoBa 🎵
 
 A high-quality live streaming radio application featuring lossless audio, real-time metadata, and community-driven song ratings.
 
@@ -59,7 +59,7 @@ A high-quality live streaming radio application featuring lossless audio, real-t
 
 ## Docker Deployment 🐳
 
-Radio Russell includes complete Docker support for both development and production deployments.
+Radio BoLuoBa includes complete Docker support for both development and production deployments.
 
 ### Quick Docker Start
 
@@ -158,7 +158,7 @@ CREATE TABLE song_ratings (
 
 ## Brand Guidelines
 
-Radio Russell follows a distinctive brand identity:
+Radio BoLuoBa follows a distinctive brand identity:
 
 ### Colors
 - **Mint**: `#D8F2D5` - Background accents
@@ -245,4 +245,4 @@ For support, please open an issue on GitHub or contact the development team.
 
 ---
 
-**Radio Russell** - *Crystal clear audio, community driven* 🎵
+**Radio BoLuoBa** - *Crystal clear audio, community driven* 🎵

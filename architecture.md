@@ -29,7 +29,7 @@ flowchart TD
     
     %% Docker Network
     subgraph DOCKER["🐳 Docker Network"]
-        CONTAINERS["radio-russell-network"]
+        CONTAINERS["radio-boluoba-network"]
     end
     
     %% Data Flow
