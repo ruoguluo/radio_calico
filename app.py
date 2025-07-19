@@ -59,6 +59,22 @@ def serve_static(filename):
     return send_from_directory("static", filename)
 
 
+# Favicon routes
+@app.route("/favicon.ico")
+def favicon_ico():
+    return send_from_directory(".", "favicon.ico", mimetype="image/vnd.microsoft.icon")
+
+
+@app.route("/favicon.png")
+def favicon_png():
+    return send_from_directory(".", "favicon.png", mimetype="image/png")
+
+
+@app.route("/favicon.svg")
+def favicon_svg():
+    return send_from_directory(".", "favicon.svg", mimetype="image/svg+xml")
+
+
 @app.route("/api/users", methods=["GET"])
 def get_users():
     conn = get_db_connection()
