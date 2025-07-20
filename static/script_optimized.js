@@ -229,7 +229,7 @@ function updateNowPlaying(data) {
         elements.yearBanner.style.display = 'none';
     }
     
-    // Optimize album art loading with timestamp
+    // Use direct CloudFront URL for album art
     const timestamp = Date.now();
     elements.albumArt.src = `https://d3d4yli4hf5bmh.cloudfront.net/cover.jpg?t=${timestamp}`;
     

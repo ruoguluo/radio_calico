@@ -2,10 +2,18 @@ import hashlib
 import os
 import sqlite3
 from datetime import datetime, timedelta
+from urllib.parse import urlparse
 
 from flask import Flask, g, jsonify, make_response, request, send_from_directory
 from flask_compress import Compress
 from flask_cors import CORS
+
+try:
+    import psycopg2
+    import psycopg2.extras
+    POSTGRES_AVAILABLE = True
+except ImportError:
+    POSTGRES_AVAILABLE = False
 
 app = Flask(__name__)
 CORS(app)
@@ -14,7 +22,8 @@ CORS(app)
 Compress(app)
 
 # Configuration
-DATABASE = "database.db"
+# Check DATABASE_PATH first (for dev/SQLite), then DATABASE_URL (for prod/PostgreSQL)
+DATABASE = os.getenv("DATABASE_PATH") or os.getenv("DATABASE_URL") or "database.db"
 CACHE_TIMEOUT = 300  # 5 minutes for most responses
 STATIC_CACHE_TIMEOUT = 86400 * 30  # 30 days for static files
 
@@ -53,10 +62,22 @@ def set_cache(cache_key, data):
 def get_db_connection():
     """Get database connection with connection pooling"""
     if not hasattr(g, "db_connection"):
-        g.db_connection = sqlite3.connect(DATABASE)
-        g.db_connection.row_factory = sqlite3.Row
-        # Enable WAL mode for better concurrent performance
-        g.db_connection.execute("PRAGMA journal_mode=WAL")
+        if DATABASE.startswith('postgresql://') and POSTGRES_AVAILABLE:
+            url = urlparse(DATABASE)
+            conn_params = {
+                'dbname': url.path[1:],
+                'user': url.username,
+                'password': url.password,
+                'host': url.hostname,
+                'port': url.port or 5432
+            }
+            g.db_connection = psycopg2.connect(**conn_params)
+            g.db_connection.autocommit = True
+        else:
+            g.db_connection = sqlite3.connect(DATABASE)
+            g.db_connection.row_factory = sqlite3.Row
+            # Enable WAL mode for better concurrent performance
+            g.db_connection.execute("PRAGMA journal_mode=WAL")
     return g.db_connection
 
 
@@ -108,7 +129,15 @@ def init_db():
 def add_cache_headers(response, max_age=CACHE_TIMEOUT):
     """Add caching headers to response"""
     response.headers["Cache-Control"] = f"public, max-age={max_age}"
-    response.headers["ETag"] = hashlib.md5(response.get_data()).hexdigest()[:16]
+    
+    # Only generate ETag if response data is accessible (not in direct passthrough mode)
+    try:
+        if hasattr(response, 'get_data') and not response.direct_passthrough:
+            response.headers["ETag"] = hashlib.md5(response.get_data()).hexdigest()[:16]
+    except (RuntimeError, AttributeError):
+        # Skip ETag generation if response is in passthrough mode or data is not accessible
+        pass
+    
     return response
 
 
@@ -375,6 +404,54 @@ def rate_song(song_id):
         return jsonify({"error": "Internal server error"}), 500
 
 
+@app.route("/album-art")
+@app.route("/album-art/")
+@app.route("/album-art/<filename>")
+@app.route("/album-art/<path:filename>")
+def serve_album_art(filename=None):
+    """Proxy album art from CloudFront with correct content-type"""
+    try:
+        import requests
+        
+        # Default to cover.jpg if no filename specified
+        if not filename:
+            filename = "cover.jpg"
+        
+        cloudfront_url = f"https://d3d4yli4hf5bmh.cloudfront.net/{filename}"
+        
+        # Fetch image from CloudFront
+        resp = requests.get(cloudfront_url, timeout=10)
+        resp.raise_for_status()
+        
+        # Create response with correct content type
+        response = make_response(resp.content)
+        
+        # Set correct content type based on file extension
+        if filename.endswith('.webp'):
+            response.headers['Content-Type'] = 'image/webp'
+        elif filename.endswith('.png'):
+            response.headers['Content-Type'] = 'image/png'
+        elif filename.endswith(('.jpg', '.jpeg')):
+            response.headers['Content-Type'] = 'image/jpeg'
+        else:
+            response.headers['Content-Type'] = 'image/jpeg'  # default
+        
+        # Add caching headers for images
+        return add_cache_headers(response, max_age=CACHE_TIMEOUT)
+        
+    except ImportError:
+        # If requests is not available, redirect to original URL
+        from flask import redirect
+        cloudfront_url = f"https://d3d4yli4hf5bmh.cloudfront.net/{filename or 'cover.jpg'}"
+        return redirect(cloudfront_url)
+    except Exception as e:
+        print(f"Failed to fetch album art: {e}")
+        # Fallback to direct CloudFront URL
+        from flask import redirect
+        cloudfront_url = f"https://d3d4yli4hf5bmh.cloudfront.net/{filename or 'cover.jpg'}"
+        return redirect(cloudfront_url)
+
+
 @app.route("/health")
 def health_check():
     """Health check endpoint"""
@@ -382,11 +459,14 @@ def health_check():
         conn = get_db_connection()
         conn.execute("SELECT 1").fetchone()
 
+        # Determine database type based on connection
+        db_type = "postgresql" if DATABASE.startswith('postgresql://') else "sqlite"
+
         return jsonify(
             {
                 "status": "healthy",
                 "timestamp": datetime.utcnow().isoformat(),
-                "database": "sqlite",
+                "database": db_type,
                 "cache_size": len(cache),
             }
         )
@@ -410,10 +490,15 @@ def internal_error(error):
     return jsonify({"error": "Internal server error"}), 500
 
 
-if __name__ == "__main__":
-    init_db()
-    print(f"Database initialized at {DATABASE}")
+# Initialize database when the module is imported (for WSGI servers)
+try:
+    with app.app_context():
+        init_db()
+        print(f"Database initialized at {DATABASE}")
+except Exception as e:
+    print(f"Failed to initialize database: {e}")
 
+if __name__ == "__main__":
     # Enable debug mode only in development
     debug_mode = os.getenv("FLASK_ENV") == "development"
     app.run(debug=debug_mode, host="0.0.0.0", port=3000, threaded=True)
